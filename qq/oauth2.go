@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/wsw0108/toauth2"
 	"golang.org/x/oauth2"
 )
 
@@ -37,11 +38,11 @@ type User struct {
 	Gender       string
 }
 
-func AuthCodeURL(c *oauth2.Config, state string) string {
-	return c.AuthCodeURL(state)
+func AuthCodeURL(c *oauth2.Config, state string, opts ...oauth2.AuthCodeOption) string {
+	return c.AuthCodeURL(state, opts...)
 }
 
-func Exchange(ctx context.Context, c *oauth2.Config, code string) (*oauth2.Token, error) {
+func Exchange(ctx context.Context, c *oauth2.Config, code string, opts ...toauth2.AuthCodeOption) (*oauth2.Token, error) {
 	var buf bytes.Buffer
 	buf.WriteString(c.Endpoint.TokenURL)
 	v := url.Values{}
@@ -52,6 +53,9 @@ func Exchange(ctx context.Context, c *oauth2.Config, code string) (*oauth2.Token
 	}
 	v.Set("client_id", c.ClientID)
 	v.Set("client_secret", c.ClientSecret)
+	for _, opt := range opts {
+		opt.SetValue(v)
+	}
 	if strings.Contains(c.Endpoint.TokenURL, "?") {
 		buf.WriteByte('&')
 	} else {
@@ -140,7 +144,7 @@ type userJSON struct {
 	Gender       string `json:"gender"`
 }
 
-func GetUser(ctx context.Context, c *oauth2.Config, token *oauth2.Token) (*User, error) {
+func GetUser(ctx context.Context, c *oauth2.Config, token *oauth2.Token, opts ...toauth2.AuthCodeOption) (*User, error) {
 	openID, err := GetOpenID(ctx, token)
 	if err != nil {
 		return nil, err
@@ -152,6 +156,9 @@ func GetUser(ctx context.Context, c *oauth2.Config, token *oauth2.Token) (*User,
 	v.Set("oauth_consumer_key", c.ClientID)
 	v.Set("openid", openID)
 	v.Set("format", "json")
+	for _, opt := range opts {
+		opt.SetValue(v)
+	}
 	if strings.Contains(UserInfoURL, "?") {
 		buf.WriteByte('&')
 	} else {

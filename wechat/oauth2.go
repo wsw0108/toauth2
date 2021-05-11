@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/wsw0108/toauth2"
 	"golang.org/x/oauth2"
 )
 
@@ -22,6 +23,13 @@ var (
 	UserInfoURL = "https://api.weixin.qq.com/sns/userinfo"
 )
 
+var (
+	OptionStyleWhite     toauth2.AuthCodeOption = toauth2.SetAuthURLParam("style", "white")
+	OptionStyleBlack     toauth2.AuthCodeOption = toauth2.SetAuthURLParam("style", "black")
+	OptionEmptyStyleType toauth2.AuthCodeOption = toauth2.SetAuthURLParam("styletype", "")
+	OptionEmptySizeType  toauth2.AuthCodeOption = toauth2.SetAuthURLParam("sizetype", "")
+)
+
 type User struct {
 	OpenID    string `json:"openid"`
 	Nickname  string `json:"nickname"`
@@ -30,7 +38,7 @@ type User struct {
 	Email     string `json:"email"`
 }
 
-func AuthCodeURL(c *oauth2.Config, state string) string {
+func AuthCodeURL(c *oauth2.Config, state string, opts ...toauth2.AuthCodeOption) string {
 	var buf bytes.Buffer
 	buf.WriteString(c.Endpoint.AuthURL)
 	v := url.Values{
@@ -46,6 +54,9 @@ func AuthCodeURL(c *oauth2.Config, state string) string {
 	if state != "" {
 		v.Set("state", state)
 	}
+	for _, opt := range opts {
+		opt.SetValue(v)
+	}
 	if strings.Contains(c.Endpoint.AuthURL, "?") {
 		buf.WriteByte('&')
 	} else {
@@ -56,7 +67,7 @@ func AuthCodeURL(c *oauth2.Config, state string) string {
 	return buf.String()
 }
 
-func Exchange(ctx context.Context, c *oauth2.Config, code string) (*oauth2.Token, error) {
+func Exchange(ctx context.Context, c *oauth2.Config, code string, opts ...toauth2.AuthCodeOption) (*oauth2.Token, error) {
 	var buf bytes.Buffer
 	buf.WriteString(c.Endpoint.TokenURL)
 	v := url.Values{}
@@ -67,6 +78,9 @@ func Exchange(ctx context.Context, c *oauth2.Config, code string) (*oauth2.Token
 	}
 	v.Set("appid", c.ClientID)
 	v.Set("secret", c.ClientSecret)
+	for _, opt := range opts {
+		opt.SetValue(v)
+	}
 	if strings.Contains(c.Endpoint.TokenURL, "?") {
 		buf.WriteByte('&')
 	} else {
@@ -113,7 +127,7 @@ func GetOpenID(_ context.Context, token *oauth2.Token) (string, error) {
 	return "", errors.New("can not get openID")
 }
 
-func GetUser(ctx context.Context, _ *oauth2.Config, token *oauth2.Token) (*User, error) {
+func GetUser(ctx context.Context, _ *oauth2.Config, token *oauth2.Token, opts ...toauth2.AuthCodeOption) (*User, error) {
 	openID, err := GetOpenID(ctx, token)
 	if err != nil {
 		return nil, err
@@ -124,6 +138,9 @@ func GetUser(ctx context.Context, _ *oauth2.Config, token *oauth2.Token) (*User,
 	v.Set("access_token", token.AccessToken)
 	v.Set("openid", openID)
 	v.Set("lang", "zh_CN")
+	for _, opt := range opts {
+		opt.SetValue(v)
+	}
 	if strings.Contains(UserInfoURL, "?") {
 		buf.WriteByte('&')
 	} else {
