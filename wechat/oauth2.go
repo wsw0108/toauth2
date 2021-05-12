@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -36,6 +37,8 @@ type User struct {
 	Gender    int    `json:"sex"` //值为1时是男性，值为2时是女性，值为0时是未知
 	AvatarURL string `json:"headimgurl"`
 	Email     string `json:"email"`
+
+	Raw map[string]interface{} `json:"-"`
 }
 
 func AuthCodeURL(c *oauth2.Config, state string, opts ...toauth2.AuthCodeOption) string {
@@ -104,6 +107,9 @@ func Exchange(ctx context.Context, c *oauth2.Config, code string, opts ...toauth
 	if err = json.Unmarshal(body, &tj); err != nil {
 		return nil, err
 	}
+	if tj.ErrCode != 0 {
+		return nil, fmt.Errorf("%d: %s", tj.ErrCode, tj.ErrMsg)
+	}
 	token := &oauth2.Token{
 		AccessToken:  tj.AccessToken,
 		TokenType:    tj.TokenType,
@@ -125,6 +131,16 @@ func GetOpenID(_ context.Context, token *oauth2.Token) (string, error) {
 		return openID, nil
 	}
 	return "", errors.New("can not get openID")
+}
+
+type userJSON struct {
+	ErrCode   int    `json:"errcode"`
+	ErrMsg    string `json:"errmsg"`
+	OpenID    string `json:"openid"`
+	Nickname  string `json:"nickname"`
+	Gender    int    `json:"sex"`
+	AvatarURL string `json:"headimgurl"`
+	Email     string `json:"email"`
 }
 
 func GetUser(ctx context.Context, _ *oauth2.Config, token *oauth2.Token, opts ...toauth2.AuthCodeOption) (*User, error) {
@@ -156,10 +172,26 @@ func GetUser(ctx context.Context, _ *oauth2.Config, token *oauth2.Token, opts ..
 		return nil, err
 	}
 	defer resp.Body.Close()
-	var user User
-	err = json.NewDecoder(resp.Body).Decode(&user)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
+	var uj userJSON
+	err = json.Unmarshal(body, &uj)
+	if err != nil {
+		return nil, err
+	}
+	if uj.ErrCode != 0 {
+		return nil, fmt.Errorf("%d: %s", uj.ErrCode, uj.ErrMsg)
+	}
+	user := User{
+		OpenID:    uj.OpenID,
+		Nickname:  uj.Nickname,
+		Gender:    uj.Gender,
+		AvatarURL: uj.AvatarURL,
+		Email:     uj.Email,
+		Raw:       make(map[string]interface{}),
+	}
+	json.Unmarshal(body, &user.Raw)
 	return &user, nil
 }

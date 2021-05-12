@@ -8,6 +8,8 @@ import (
 
 // tokenJSON, from golang.org/x/oauth2/internal/token.go
 type tokenJSON struct {
+	ErrCode      int            `json:"errcode"`
+	ErrMsg       string         `json:"errmsg"`
 	AccessToken  string         `json:"access_token"`
 	TokenType    string         `json:"token_type"`
 	RefreshToken string         `json:"refresh_token"`
