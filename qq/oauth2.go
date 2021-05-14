@@ -66,7 +66,7 @@ func Exchange(ctx context.Context, c *oauth2.Config, code string, opts ...toauth
 	if err != nil {
 		return nil, err
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := toauth2.ContextClient(ctx).Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +113,7 @@ func GetOpenID(ctx context.Context, token *oauth2.Token) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := toauth2.ContextClient(ctx).Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -169,7 +169,7 @@ func GetUser(ctx context.Context, c *oauth2.Config, token *oauth2.Token, opts ..
 	if err != nil {
 		return nil, err
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := toauth2.ContextClient(ctx).Do(req)
 	if err != nil {
 		return nil, err
 	}

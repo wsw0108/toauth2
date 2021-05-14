@@ -94,7 +94,7 @@ func Exchange(ctx context.Context, c *oauth2.Config, code string, opts ...toauth
 	if err != nil {
 		return nil, err
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := toauth2.ContextClient(ctx).Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +167,7 @@ func GetUser(ctx context.Context, _ *oauth2.Config, token *oauth2.Token, opts ..
 	if err != nil {
 		return nil, err
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := toauth2.ContextClient(ctx).Do(req)
 	if err != nil {
 		return nil, err
 	}
