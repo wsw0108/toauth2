@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 
 	"github.com/wsw0108/toauth2/wechat"
@@ -41,6 +42,12 @@ func testWechat() {
 	clientID := os.Getenv("WECHAT_CLIENT_ID")
 	clientSecret := os.Getenv("WECHAT_CLIENT_SECRET")
 	redirectURL := os.Getenv("WECHAT_REDIRECT_URL")
+	redirect, err := url.Parse(redirectURL)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	fmt.Println("Path:", redirect.Path)
 	config := &oauth2.Config{
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
@@ -55,7 +62,7 @@ func testWechat() {
 	fmt.Println("AuthCodeURL:", wechat.AuthCodeURL(config, state))
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/auth/github/callback", func(_ http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc(redirect.Path, func(_ http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
 		if q.Get("state") != state {
 			fmt.Println("state mismatch")
