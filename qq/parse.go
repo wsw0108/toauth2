@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/url"
 	"strconv"
@@ -42,8 +43,13 @@ func parseTokenForm(body string) (*oauth2.Token, error) {
 	return token, nil
 }
 
+// https://wiki.connect.qq.com/unionid%e4%bb%8b%e7%bb%8d
 type meJSON struct {
-	OpenID string `json:"openid"`
+	Error       int    `json:"error"`
+	Description string `json:"error_description"`
+	ClientID    string `json:"client_id"`
+	OpenID      string `json:"openid"`
+	UnionID     string `json:"unionid"`
 }
 
 func parseOpenID(r io.Reader) (string, error) {
@@ -66,5 +72,11 @@ func parseOpenIDBytes(body []byte) (string, error) {
 	}
 	var me meJSON
 	err := json.Unmarshal(body, &me)
+	if err != nil {
+		return "", err
+	}
+	if me.Error != 0 {
+		return "", fmt.Errorf("%d: %s", me.Error, me.Description)
+	}
 	return me.OpenID, err
 }
