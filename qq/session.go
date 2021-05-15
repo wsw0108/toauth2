@@ -1,4 +1,4 @@
-package wechat
+package qq
 
 import (
 	"encoding/json"
@@ -43,7 +43,7 @@ func (s *Session) Authorize(provider goth.Provider, params goth.Params) (string,
 	s.AccessToken = token.AccessToken
 	s.RefreshToken = token.RefreshToken
 	s.ExpiresAt = token.Expiry
-	s.OpenID, err = GetOpenID(ctx, token)
+	s.OpenID, err = getOpenID(ctx, p.openIDURL, token.AccessToken)
 	return token.AccessToken, err
 }
 

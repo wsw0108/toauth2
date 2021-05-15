@@ -1,4 +1,4 @@
-package wechat
+package qq
 
 import (
 	"bytes"
@@ -14,7 +14,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-// Provider is the implementation of `goth.Provider` for accessing Wechat.
+// Provider is the implementation of `goth.Provider` for accessing QQ.
 type Provider struct {
 	ClientKey    string
 	Secret       string
@@ -24,28 +24,28 @@ type Provider struct {
 	providerName string
 	authURL      string
 	tokenURL     string
-	refreshURL   string
+	openIDURL    string
 	userInfoURL  string
 	authCodeOpts []toauth2.AuthCodeOption
 	exchangeOpts []toauth2.AuthCodeOption
 	userInfoOpts []toauth2.AuthCodeOption
 }
 
-// New creates a new Wechat provider and sets up important connection details.
-// You should always call `wechat.New` to get a new provider.  Never try to
+// New creates a new QQ provider and sets up important connection details.
+// You should always call `qq.New` to get a new provider.  Never try to
 // create one manually.
 func New(clientKey, secret, callbackURL string, scopes ...string) *Provider {
-	return NewCustomisedURL(clientKey, secret, callbackURL, AuthURL, TokenURL, RefreshURL, UserInfoURL, scopes...)
+	return NewCustomisedURL(clientKey, secret, callbackURL, AuthURL, TokenURL, OpenIDURL, UserInfoURL, scopes...)
 }
 
 // NewCustomisedURL is similar to New(...) but can be used to set custom URLs to connect to
-func NewCustomisedURL(clientKey, secret, callbackURL, authURL, tokenURL, refreshURL, userInfoURL string, scopes ...string) *Provider {
+func NewCustomisedURL(clientKey, secret, callbackURL, authURL, tokenURL, openIDURL, userInfoURL string, scopes ...string) *Provider {
 	p := &Provider{
 		ClientKey:    clientKey,
 		Secret:       secret,
 		CallbackURL:  callbackURL,
-		providerName: "wechat",
-		refreshURL:   refreshURL,
+		providerName: "qq",
+		openIDURL:    openIDURL,
 		userInfoURL:  userInfoURL,
 	}
 	p.config = newConfig(p, authURL, tokenURL, scopes)
@@ -78,17 +78,17 @@ func (p *Provider) Client() *http.Client {
 	return goth.HTTPClientWithFallBack(p.HTTPClient)
 }
 
-// Debug is a no-op for the wechat package.
+// Debug is a no-op for the qq package.
 func (p *Provider) Debug(debug bool) {}
 
-// BeginAuth asks Wechat for an authentication end-point.
+// BeginAuth asks QQ for an authentication end-point.
 func (p *Provider) BeginAuth(state string) (goth.Session, error) {
 	return &Session{
 		AuthURL: AuthCodeURL(p.config, state, p.authCodeOpts...),
 	}, nil
 }
 
-// FetchUser will go to Wechat and access basic information about the user.
+// FetchUser will go to QQ and access basic information about the user.
 func (p *Provider) FetchUser(session goth.Session) (goth.User, error) {
 	sess := session.(*Session)
 	user := goth.User{
@@ -96,6 +96,7 @@ func (p *Provider) FetchUser(session goth.Session) (goth.User, error) {
 		Provider:     p.Name(),
 		RefreshToken: sess.RefreshToken,
 		ExpiresAt:    sess.ExpiresAt,
+		UserID:       sess.OpenID,
 	}
 
 	if sess.AccessToken == "" {
@@ -107,7 +108,7 @@ func (p *Provider) FetchUser(session goth.Session) (goth.User, error) {
 	}
 
 	ctx := goth.ContextForClient(p.Client())
-	response, err := userRoundTrip(ctx, p.userInfoURL, sess.AccessToken, sess.OpenID, p.userInfoOpts...)
+	response, err := userRoundTrip(ctx, p.config, p.userInfoURL, sess.AccessToken, sess.OpenID, p.userInfoOpts...)
 	if err != nil {
 		if response != nil {
 			response.Body.Close()
@@ -162,15 +163,11 @@ func userFromReader(r io.Reader, user *goth.User) error {
 	if err != nil {
 		return err
 	}
-	if uj.ErrCode != 0 {
-		return fmt.Errorf("%d: %s", uj.ErrCode, uj.ErrMsg)
+	if uj.Ret != 0 {
+		return fmt.Errorf("%d: %s", uj.Ret, uj.Msg)
 	}
-	// TOOD: get email?
-	user.Email = uj.Email
-	user.Name = uj.OpenID
-	user.UserID = uj.UnionID
 	user.NickName = uj.Nickname
-	user.AvatarURL = uj.AvatarURL
+	user.AvatarURL = uj.FigureURLqq1
 	return nil
 }
 
@@ -181,5 +178,5 @@ func (p *Provider) RefreshTokenAvailable() bool {
 
 // RefreshToken get new access token based on the refresh token
 func (p *Provider) RefreshToken(refreshToken string) (*oauth2.Token, error) {
-	return doRefreshToken(goth.ContextForClient(p.Client()), p.config, p.refreshURL, refreshToken)
+	return RefreshToken(goth.ContextForClient(p.Client()), p.config, refreshToken)
 }
