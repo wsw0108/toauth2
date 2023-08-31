@@ -15,6 +15,7 @@ type Session struct {
 	RefreshToken string
 	ExpiresAt    time.Time
 	OpenID       string
+	UnionID      string
 }
 
 var _ goth.Session = &Session{}
@@ -37,13 +38,18 @@ func (s *Session) Authorize(provider goth.Provider, params goth.Params) (string,
 	}
 
 	if !token.Valid() {
-		return "", errors.New("Invalid token received from provider")
+		return "", errors.New("invalid token received from provider")
 	}
 
 	s.AccessToken = token.AccessToken
 	s.RefreshToken = token.RefreshToken
 	s.ExpiresAt = token.Expiry
-	s.OpenID, err = getOpenID(ctx, p.openIDURL, token.AccessToken)
+	me, err := getUserID(ctx, p.openIDURL, token.AccessToken, true)
+	if err != nil {
+		return "", err
+	}
+	s.OpenID = me.OpenID
+	s.UnionID = me.UnionID
 	return token.AccessToken, err
 }
 

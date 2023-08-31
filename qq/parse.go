@@ -52,31 +52,35 @@ type meJSON struct {
 	UnionID     string `json:"unionid"`
 }
 
-func parseOpenID(r io.Reader) (string, error) {
-	body, err := io.ReadAll(r)
+func parseMeJSON(r io.Reader) (*meJSON, error) {
+	var me meJSON
+	err := json.NewDecoder(r).Decode(&me)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return parseOpenIDBytes(body)
+	if me.Error != 0 {
+		return nil, fmt.Errorf("%d: %s", me.Error, me.Description)
+	}
+	return &me, nil
 }
 
-func parseOpenIDBytes(body []byte) (string, error) {
+func parseMeJSONCallback(r io.Reader) (*meJSON, error) {
+	body, err := io.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+	return parseMeJSONCallbackBytes(body)
+}
+
+func parseMeJSONCallbackBytes(body []byte) (*meJSON, error) {
 	if bytes.Contains(body, []byte("callback")) {
 		p1 := bytes.IndexByte(body, '(')
 		p2 := bytes.LastIndexByte(body, ')')
 		if p1 > 0 && p2 > 0 && p1 < p2 {
 			body = body[p1+1 : p2]
 		} else {
-			return "", errors.New("invalid response for Get OpenID API")
+			return nil, errors.New("invalid response for Get OpenID/UnionID API")
 		}
 	}
-	var me meJSON
-	err := json.Unmarshal(body, &me)
-	if err != nil {
-		return "", err
-	}
-	if me.Error != 0 {
-		return "", fmt.Errorf("%d: %s", me.Error, me.Description)
-	}
-	return me.OpenID, err
+	return parseMeJSON(bytes.NewReader(body))
 }

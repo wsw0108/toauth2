@@ -119,29 +119,58 @@ func RefreshToken(ctx context.Context, c *oauth2.Config, refreshToken string) (*
 	return tokenRoundTrip(ctx, req)
 }
 
-func getOpenID(ctx context.Context, openIDURL string, accessToken string) (string, error) {
+func getUserID(ctx context.Context, openIDURL string, accessToken string, getUnionid bool) (*meJSON, error) {
 	var buf bytes.Buffer
 	buf.WriteString(openIDURL)
+	v := url.Values{}
+	v.Set("access_token", accessToken)
+	v.Set("fmt", "json")
+	if getUnionid {
+		v.Set("unionid", "1")
+	}
 	if strings.Contains(openIDURL, "?") {
 		buf.WriteByte('&')
 	} else {
 		buf.WriteByte('?')
 	}
-	buf.WriteString("access_token=" + accessToken)
+	buf.WriteString(v.Encode())
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, buf.String(), nil)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	resp, err := toauth2.ContextClient(ctx).Do(req)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer resp.Body.Close()
-	return parseOpenID(resp.Body)
+	return parseMeJSON(resp.Body)
 }
 
 func GetOpenID(ctx context.Context, token *oauth2.Token) (string, error) {
-	return getOpenID(ctx, OpenIDURL, token.AccessToken)
+	me, err := getUserID(ctx, OpenIDURL, token.AccessToken, false)
+	if err != nil {
+		return "", err
+	}
+	return me.OpenID, nil
+}
+
+func GetUnionID(ctx context.Context, token *oauth2.Token) (string, error) {
+	me, err := getUserID(ctx, OpenIDURL, token.AccessToken, true)
+	if err != nil {
+		return "", err
+	}
+	return me.UnionID, nil
+}
+
+func GetUserID(ctx context.Context, token *oauth2.Token) (toauth2.UserID, error) {
+	me, err := getUserID(ctx, OpenIDURL, token.AccessToken, true)
+	if err != nil {
+		return toauth2.UserID{}, err
+	}
+	return toauth2.UserID{
+		OpenID:  me.OpenID,
+		UnionID: me.UnionID,
+	}, nil
 }
 
 type userJSON struct {

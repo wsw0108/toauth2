@@ -3,11 +3,9 @@ package qq
 import (
 	"bytes"
 	"encoding/json"
-	"io"
-	"io/ioutil"
-	"net/http"
-
 	"fmt"
+	"io"
+	"net/http"
 
 	"github.com/markbates/goth"
 	"github.com/wsw0108/toauth2"
@@ -96,7 +94,8 @@ func (p *Provider) FetchUser(session goth.Session) (goth.User, error) {
 		Provider:     p.Name(),
 		RefreshToken: sess.RefreshToken,
 		ExpiresAt:    sess.ExpiresAt,
-		UserID:       sess.OpenID,
+		Name:         sess.OpenID,
+		UserID:       sess.UnionID,
 	}
 
 	if sess.AccessToken == "" {
@@ -122,17 +121,17 @@ func (p *Provider) FetchUser(session goth.Session) (goth.User, error) {
 		return user, fmt.Errorf("%s responded with a %d trying to fetch user information", p.providerName, response.StatusCode)
 	}
 
-	bits, err := ioutil.ReadAll(response.Body)
+	body, err := io.ReadAll(response.Body)
 	if err != nil {
 		return user, err
 	}
 
-	err = json.NewDecoder(bytes.NewReader(bits)).Decode(&user.RawData)
+	err = json.NewDecoder(bytes.NewReader(body)).Decode(&user.RawData)
 	if err != nil {
 		return user, err
 	}
 
-	err = userFromReader(bytes.NewReader(bits), &user)
+	err = userFromReader(bytes.NewReader(body), &user)
 
 	return user, err
 }
@@ -150,9 +149,7 @@ func newConfig(provider *Provider, authURL, tokenURL string, scopes []string) *o
 	}
 
 	if len(scopes) > 0 {
-		for _, scope := range scopes {
-			c.Scopes = append(c.Scopes, scope)
-		}
+		c.Scopes = append(c.Scopes, scopes...)
 	}
 	return c
 }

@@ -7,6 +7,11 @@ import (
 	"golang.org/x/oauth2"
 )
 
+type UserID struct {
+	OpenID  string
+	UnionID string
+}
+
 // TokenRoundTrip, golang.org/x/oauth2/internal/token.go, doTokenRoundTrip
 func TokenRoundTrip(ctx context.Context, req *http.Request) (*oauth2.Token, error) {
 	// TODO: Content-Type of qq's token response

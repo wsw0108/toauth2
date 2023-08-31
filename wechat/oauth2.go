@@ -32,7 +32,7 @@ var (
 type User struct {
 	OpenID    string `json:"openid"`
 	Nickname  string `json:"nickname"`
-	Gender    int    `json:"sex"` //值为1时是男性，值为2时是女性，值为0时是未知
+	Gender    int    `json:"sex"` // 值为1时是男性，值为2时是女性，值为0时是未知
 	AvatarURL string `json:"headimgurl"`
 	Email     string `json:"email"`
 	UnionID   string `json:"unionid"`
@@ -158,7 +158,33 @@ func GetOpenID(_ context.Context, token *oauth2.Token) (string, error) {
 	if openID, ok := value.(string); ok {
 		return openID, nil
 	}
-	return "", errors.New("can not get openID")
+	return "", errors.New("can not get OpenID")
+}
+
+func GetUnionID(_ context.Context, token *oauth2.Token) (string, error) {
+	value := token.Extra("unionid")
+	if unionID, ok := value.(string); ok {
+		return unionID, nil
+	}
+	return "", errors.New("can not get UnionID")
+}
+
+func GetUserID(_ context.Context, token *oauth2.Token) (toauth2.UserID, error) {
+	var id toauth2.UserID
+	{
+		value := token.Extra("openid")
+		if openID, ok := value.(string); ok {
+			id.OpenID = openID
+		}
+	}
+	{
+		value := token.Extra("unionid")
+		if unionID, ok := value.(string); ok {
+			id.UnionID = unionID
+		}
+
+	}
+	return id, nil
 }
 
 type userJSON struct {
